@@ -119,6 +119,13 @@ async function userAction(p:any,b:any){
   const message=onlyString(b.message,8000),path=onlyString(b.path,500);
   if(!message&&!path)fail("متن یا فایل لازم است.");
   if(path&&!path.startsWith("ss/"+t.id+"/"))fail("مسیر فایل نامعتبر است.");
+  if(path){
+   const file=path.split("/").pop()||"";
+   const objects=requireOk(await db.storage.from("ss-ticket-files").list("ss/"+t.id,{search:file,limit:10}));
+   const uploaded=objects.find((x:any)=>x.name===file);
+   const actual=Number(uploaded?.metadata?.size);
+   if(!uploaded||!Number.isSafeInteger(actual)||actual<1||actual>t.file_limit)fail("فایل بارگذاری نشده یا از سقف تیکت بزرگ‌تر است.");
+  }
   requireOk(await db.from("ss_ticket_messages").insert({ticket_id:t.id,author_id:p.id,message,attachment_path:path||null}));
   requireOk(await db.from("ss_tickets").update({status:admin?"awaiting_user":"review",updated_at:new Date().toISOString()}).eq("id",t.id));
   return {saved:true};
