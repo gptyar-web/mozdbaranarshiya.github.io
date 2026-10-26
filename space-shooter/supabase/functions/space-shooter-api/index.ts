@@ -139,7 +139,7 @@ async function adminAction(p:any,b:any){
    db.from("ss_tickets").select("*").order("updated_at",{ascending:false}).limit(500),
    db.from("ss_orders").select("*").order("created_at",{ascending:false}).limit(200),
    db.from("ss_settings").select("*").eq("id",true).single(),
-   db.schema("ss_private").from("config").select("name")
+   db.from("ss_private_config").select("name")
   ]);
   for(const q of [users,wallets,packages,discounts,announcements,tickets,orders,settings,keys])if(q.error)throw q.error;
   return {users:users.data,wallets:wallets.data,packages:packages.data,discounts:discounts.data,
@@ -204,14 +204,14 @@ async function adminAction(p:any,b:any){
   const price=Number(b.price_rial_per_coin),url=onlyString(b.bale_url,300);
   if(!Number.isSafeInteger(price)||price<0||url&&!/^https:\/\/(ble\.ir|bale\.ai)\//.test(url))fail("تنظیمات نامعتبر است.");
   requireOk(await db.from("ss_settings").update({price_rial_per_coin:price,bale_url:url,updated_at:new Date().toISOString()}).eq("id",true));
-  for(const name of ["bot_token","provider_token"]){const value=onlyString(b[name],250);if(value)requireOk(await db.schema("ss_private").from("config").upsert({name,secret:value}));}
+  for(const name of ["bot_token","provider_token"]){const value=onlyString(b[name],250);if(value)requireOk(await db.from("ss_private_config").upsert({name,secret:value}));}
   let webhook="not_configured";
-  const row=await db.schema("ss_private").from("config").select("secret").eq("name","bot_token").maybeSingle();
+  const row=await db.from("ss_private_config").select("secret").eq("name","bot_token").maybeSingle();
   if(row.data?.secret){
-   let s=await db.schema("ss_private").from("config").select("secret").eq("name","webhook_secret").maybeSingle();
+   let s=await db.from("ss_private_config").select("secret").eq("name","webhook_secret").maybeSingle();
    if(!s.data){
     const secret=crypto.randomUUID()+crypto.randomUUID();
-    requireOk(await db.schema("ss_private").from("config").upsert({name:"webhook_secret",secret}));
+    requireOk(await db.from("ss_private_config").upsert({name:"webhook_secret",secret}));
     s={data:{secret}} as any;
    }
    const endpoint=URL+"/functions/v1/space-shooter-bale?secret="+encodeURIComponent(s.data!.secret);
